@@ -27,6 +27,7 @@ var User = require('./server/routes/users');
 app.get('/api/mobile/googletokenverify', User.googleTokenVerification);
 app.post('/api/mobile/user', User.registerUser);
 app.post('/api/mobile/userlogin', User.loginUser);
+app.post('/api/mobile/userforgot', User.forgotPassword);
 
 app.use('/node_modules', express.static(__dirname + '/node_modules'));
 

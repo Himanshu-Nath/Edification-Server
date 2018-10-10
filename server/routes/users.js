@@ -1,11 +1,13 @@
 const uuidv1 = require('uuid/v1');
 const { OAuth2Client } = require('google-auth-library');
+const randomize = require('randomatic');
+const Promise = require('promise');
+const fs = require('fs');
 const consts = require('../util/constant');
 const utils = require('../util/utils');
 const keys = require('../util/keys');
-const randomize = require('randomatic');
-var Promise = require('promise');
-const fs = require('fs');
+const twilio = require('twilio')(keys.TWILIO_ACCOUNTSID, keys.TWILIO_AUTHTOKEN);
+const emailImpl = require('../serviceImpl/emailImpl');
 
 require('../models/users');
 var User = mongoose.model('userCollection');
@@ -117,7 +119,7 @@ module.exports = {
     loginUser: function(req, res) {
         let privateKey = utils.readKeyFile(__dirname + '/../' + keys.PRIVATE_KEY_PATH);
         let userDetails = req.body;
-        User.countDocuments({email: userDetails.email, password: userDetails.password, status: true})
+        User.countDocuments({email: userDetails.email, password: userDetails.password, status: true}).exec()
         .then(function(count) {
             if(count > 0) {
                 let token = utils.getJWTToken({ email: userDetails.email, password: userDetails.password }, privateKey);
@@ -142,24 +144,11 @@ module.exports = {
     forgotPassword: function(req, res) {
         let userDetails = req.body;
         let otp = randomize('0', 6);
-        User.countDocuments({email: userDetails.email, mobile: userDetails.mobile})
+        User.countDocuments({email: userDetails.email, mobile: Number(userDetails.mobile)}).exec()
         .then(function(count) {
-            if(count > 0) {                
-                User.findOneAndUpdate({ email: userDetails.email, mobile: userDetails.mobile }, { $set: { otp: otp, status: false, password: null } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
-                    console.log(result);
-                    if(err) {
-                        logger.error("forgotPassword: Error due to: "+err);
-                        res.status(500).send({status: false, message: consts.FAIL, devMessage: "Login Failed", err});
-                    }
-                });
-            } else {
-                res.status(403).send({status: false, message: consts.FAIL, devMessage: "Invalid Email And Moabile"});
-            }            
-        })
-        .then(function(count) {
+            var data = [];
             if(count > 0) {
-                User.findOneAndUpdate({ email: userDetails.email, mobile: userDetails.mobile }, { $set: { otp: otp, status: false, password: null } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
-                    console.log(result);
+               return User.findOneAndUpdate({ email: userDetails.email, mobile: userDetails.mobile }, { $set: { otp: otp, status: false, password: null } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
                     if(err) {
                         logger.error("forgotPassword: Error due to: "+err);
                         res.status(500).send({status: false, message: consts.FAIL, devMessage: "Login Failed", err});
@@ -169,11 +158,42 @@ module.exports = {
                 res.status(403).send({status: false, message: consts.FAIL, devMessage: "Invalid Email And Moabile"});
             }            
         })
-        .then(undefined, function(err){
-            logger.error("loginUser: Error due to: "+err);
+        .then(function(result) {
+            if(result != null) {
+                let emailSend;
+                let smsSend;
+
+                //Sending email otp
+                var emailObject = {
+                    name: result.name,
+                    from: keys.EMAIL.user,
+                    from_name: keys.EMAIL.from,
+                    to: userDetails.email,
+                    subject: "Edification OTP ✔",
+                    body: 'Hello &nbsp;' + result.name + ',<br><br><p></p><p>Looks like you had like to change your <b>Edification</b> password. Please find below the OTP to change password:</p><p><i><b>OTP:</b></i> <b>'+ otp +'</b>.</p><p>This message was generated automatically. Please disregard this e-mail if you did not request a password reset. Cheers,</p><p>If you need help or have questions, email hnath723@gmail.com anytime.</p> <br> <p>Sincerely, <br>Himanshu Nath <br>Edification Team</p>'
+                }
+                emailImpl.sendMail(emailObject, function(status) {
+                    emailSend = status;
+                    if(emailSend)
+                        logger.error("forgotPassword: OTP successfully send via email: "+err);
+                });
+
+                //Sending mobile otp
+                twilio.messages
+                .create({
+                   body: 'Edification forgot password OTP is: '+otp,
+                   from: keys.TWILIOFROM,
+                   to: keys.TWILIOTO
+                 })
+                .then(message => smsSend = true)
+                .done();
+                res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "OTP generated successfully", otp: otp});
+            }
+        })
+        .catch(function(err){
+            logger.error("loginUser: Error due to1: "+err);
             res.status(500).send({status: false, message: consts.FAIL, devMessage: "Login error", err});
         });
     }
-
 
 }
