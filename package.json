@@ -1,0 +1,25 @@
+{
+  "name": "edification-server",
+  "version": "1.0.0",
+  "description": "Edification server",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "google-auth-library": "^2.0.0",
+    "jsonwebtoken": "^8.3.0",
+    "jwt-decode": "^2.2.0",
+    "log4js": "^3.0.5",
+    "mongoose": "^5.2.17",
+    "nodemon": "^1.18.4",
+    "promise": "^8.0.2",
+    "randomatic": "^3.1.0",
+    "uuid": "^3.3.2"
+  }
+}
