@@ -1,0 +1,62 @@
+GOOGLE ACCOUNT VERIFICATION
+http://localhost:3000/api/user/googletokenverify?deviceId="123456Abcde"&idToken=abcd1234 (GET)
+
+
+USER REGISTRATION
+http://localhost:3000/api/user/register (POST)
+Request Body:
+{
+	"name": "Himanshu Nath",
+    "email": "hnath723@gmail.com",
+    "password": "1234",
+    "mobile": 7040622320,
+    "deviceId": "e743980d6223a91b"
+}
+
+
+USER LOGIN
+http://localhost:3000/api/user/login (POST)
+Request Body:
+{
+	"email": "hnath723@gmail.com",
+	"password": "Himanshunath"
+}
+
+
+FORGOT PASSWORD
+http://localhost:3000/api/user/forgotpassword (POST)
+Request Body:
+{
+	"email": "hnath723@gmail.com",
+	"mobile": 9089786756
+}
+
+
+OTP VERIFICATION
+http://localhost:3000/api/user/otpverification (POST)
+Request Body:
+{
+	"otp": "276043",
+    "password": "abcd"
+}
+Request Header:
+"deviceId": "e743980d6223a91b"
+
+
+ADMIN REGISTRATION
+http://localhost:3000/api/admin/register (POST)
+Request Body:
+{
+	"name": "sam",
+    "email": "sampotter723@gmail.com",
+    "password": "1234"
+}
+
+
+ADMIN LOGIN
+http://localhost:3000/api/admin/login (POST)
+Request Body:
+{
+	"email": "sampotter723@gmail.com",
+	"password": "1234"
+}

@@ -12,10 +12,12 @@ module.exports = {
     ADD : "ADDED",
     DELETE : "DELETED",
 
-    X_AUTH_TOKEN : "X-Auth-Token",
+    AUTH_TOKEN : "Authentication",
+    DEVICE_ID : "deviceId",
 
-    LEAD_ROLE_SUPERADMIN: 'SUPERADMIN',
-    LEAD_ROLE_ADMIN: 'ADMIN',
+    ROLE_SUPERADMIN: 'SUPERADMIN',
+    ROLE_ADMIN: 'Admin',
+    ROLE_USER: 'User',
 
     STATUS_CLOSED: "Closed",
 

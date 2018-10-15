@@ -22,12 +22,48 @@ const logger = log4js.getLogger('server.js');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+var userImpl = require('./server/serviceImpl/userImpl');
+
+app.use(function (req, res, next) {
+    logger.info("URL: " + req.url);
+    if (req.url.includes("admin")) {
+        if (req.url == "/api/admin/register" || req.url == "/api/admin/login") {
+            next();
+        } else {
+            userImpl.validateAdminToken(req.get(consts.AUTH_TOKEN), function (response) {
+                if (response) {
+                    next();
+                } else {
+                    res.status(401).send({ status: false, message: consts.FAIL, devMsg: "Unauthorized" });
+                }
+            })
+        }
+    } else if(req.url.includes("user")){
+        if (req.url == "/api/user/googletokenverify" || req.url == "/api/user/register" || req.url == "/api/user/login"
+            || req.url == "/api/user/forgotpassword" || req.url == '/api/user/otpverification' ) {
+            next();
+        } else {
+            userImpl.validateUserToken(req.get(consts.AUTH_TOKEN), function (response) {
+                if (response) {
+                    next();
+                } else {
+                    res.status(401).send({ status: false, message: consts.FAIL, devMsg: "Unauthorized" });
+                }
+            })
+        }
+    }
+});
+
 var User = require('./server/routes/users');
 
-app.get('/api/mobile/googletokenverify', User.googleTokenVerification);
-app.post('/api/mobile/user', User.registerUser);
-app.post('/api/mobile/userlogin', User.loginUser);
-app.post('/api/mobile/userforgot', User.forgotPassword);
+app.get('/api/user/googletokenverify', User.googleTokenVerification);
+app.post('/api/user/register', User.registerUser);
+app.post('/api/user/login', User.loginUser);
+app.post('/api/user/forgotpassword', User.forgotPassword);
+app.post('/api/user/otpverification', User.otpVerification);
+
+app.post('/api/admin/register', User.registerAdmin);
+app.post('/api/admin/login', User.loginAdmin);
 
 app.use('/node_modules', express.static(__dirname + '/node_modules'));
 
