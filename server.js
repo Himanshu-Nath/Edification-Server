@@ -31,10 +31,10 @@ app.use(function (req, res, next) {
             next();
         } else {
             userImpl.validateAdminToken(req.get(consts.AUTH_TOKEN), function (response) {
-                if (response) {
+                if (response.status) {
                     next();
                 } else {
-                    res.status(401).send({ status: false, message: consts.FAIL, devMsg: "Unauthorized" });
+                    res.status(401).send({ status: false, message: consts.FAIL, devMsg: response.error });
                 }
             })
         }
@@ -55,6 +55,7 @@ app.use(function (req, res, next) {
 });
 
 var User = require('./server/routes/users');
+var Insitute = require('./server/routes/institutes');
 
 app.get('/api/user/googletokenverify', User.googleTokenVerification);
 app.post('/api/user/register', User.registerUser);
@@ -64,6 +65,9 @@ app.post('/api/user/otpverification', User.otpVerification);
 
 app.post('/api/admin/register', User.registerAdmin);
 app.post('/api/admin/login', User.loginAdmin);
+
+app.post('/api/admin/institute', Insitute.addInstitute);
+app.post('/api/admin/institutelist', Insitute.instituteList);
 
 app.use('/node_modules', express.static(__dirname + '/node_modules'));
 

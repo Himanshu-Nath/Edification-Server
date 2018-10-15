@@ -60,3 +60,36 @@ Request Body:
 	"email": "sampotter723@gmail.com",
 	"password": "1234"
 }
+
+
+ADMIN ADD INSTITUTE
+http://localhost:3000/api/admin/institute (POST)
+Request Body:
+    name:Stonehill International School
+    description:Welcome to a learning community dedicated to the development of knowledgeable, caring, confident and responsible global citizens. We are a co-educational, secular, non-selective day and boarding school located in the north of Bangalore close to the international airport.↵↵Our impressive, state-of-the-art, purpose-built campus covers 34 acres and includes extensive sports fields and facilities, swimming pools, boarding houses, libraries, and a cafeteria. We serve the internationally-minded, local and expatriate population of Bangalore with a school population of almost 500 students between the ages of 3 and 18. Our students and teachers come from India as well as over 35 different countries spanning the globe.
+    about_leadership:Stonehill is a not-for-profit school and is proud to be an education initiative of Embassy Group. The school is governed by a five-member, appointed Governing Council consisting of prominent business leaders, former parents, and the owner’s representative. The Governing Council acts under the delegated authority of the Board of Stonehill Education Foundation. The Head of School and the Business Manager are also part of the Governing Council, and are supported by the Educational Leadership Team and Admin Team, respectively.
+    about_faculty:abcd
+    about_syllabus:abcd
+    about_exam_system:abcd
+    about_facility:abcd
+    about_activity:abcd
+    admission_about:abcd
+    admission_eligibility:abcd
+    admission_fees:abcd
+    contact_address:abcd
+    contact_city:abcd
+    contact_state:abcd
+    contact_zipcode:821307
+    contact_phone[0]:9089786756
+    contact_web_site:www.google.com
+    contact_email:stonehill@gmail.com
+    contact_facebook:abcd
+    contact_twitter:abcd
+    contact_latitude:23.45
+    contact_longitude:67.45
+    instituteType:School
+    ranking:89
+    googleRating:98
+    contact_phone[1]:9089787654
+Request Header:
+    "Authentication": "1234abcd"

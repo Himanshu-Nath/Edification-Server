@@ -239,7 +239,7 @@ module.exports = {
     loginAdmin: function(req, res) {
         let privateKey = utils.readKeyFile(__dirname + '/../' + keys.PRIVATE_KEY_PATH);
         let adminDetails = req.body;
-        User.estimatedDocumentCount({email: adminDetails.email, password: adminDetails.password, role: consts.ROLE_ADMIN, status: true}).exec()
+        User.countDocuments({email: adminDetails.email, password: adminDetails.password, role: consts.ROLE_ADMIN, status: true}).exec()
         .then(function(count) {
             if(count > 0) {
                 let token = utils.getJWTToken({ email: adminDetails.email, password: adminDetails.password }, privateKey);
@@ -249,7 +249,7 @@ module.exports = {
                         res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Login Failed", err});
                     } else {
                         res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Login Sucess", token: token, result});
-                    }                    
+                    }
                 });
             } else {
                 res.status(500).send({status: false, message: consts.FAIL, devMessage: "Invalid Admin Email And Password"});
