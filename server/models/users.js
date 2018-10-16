@@ -1,3 +1,5 @@
+const bcrypt = require('bcrypt');
+const keys = require('../util/keys');
 var Schema = mongoose.Schema;
 
 var UserSchema = new Schema({
@@ -18,4 +20,15 @@ var UserSchema = new Schema({
     creation_time: {type: String, default: Date.now, required: true},
     modification_time: {type: String, default: Date.now, required: true}
 }, {collection: 'user_profile'});
+
+// hash password
+UserSchema.methods.generateHash = function(password) {
+    return bcrypt.hashSync(password, keys.SALT_ROUNDS);
+};
+
+// checking if password is valid
+UserSchema.methods.validPassword = function(password) {
+    return bcrypt.compareSync(password, this.password);
+};
+
 mongoose.model('userCollection', UserSchema);

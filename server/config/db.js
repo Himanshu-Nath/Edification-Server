@@ -1,7 +1,9 @@
 const consts = require('../util/constant');
 const logger = log4js.getLogger('db.js');
 
-mongoose.Promise = global.Promise;
+// mongoose.Promise = global.Promise;
+mongoose.Promise = require('bluebird');
+// Promise.promisifyAll(require("mongoose"));
 mongoose.connect(consts.MONGODB_LOCALHOST_URL);
 conn = mongoose.connection;
 

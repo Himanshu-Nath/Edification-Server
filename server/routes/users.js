@@ -1,4 +1,5 @@
 const uuidv1 = require('uuid/v1');
+const bcrypt = require('bcrypt');
 const { OAuth2Client } = require('google-auth-library');
 const randomize = require('randomatic');
 const Promise = require('promise');
@@ -93,51 +94,64 @@ module.exports = {
     },
 
     registerUser: function(req, res) {
+        logger.info("registerUser: start executing at: " + new Date().toString());
         let userDetails = req.body;
         var user = new User({
             name: userDetails.name,
             email: userDetails.email,
-            password: userDetails.password,
             mobile: userDetails.mobile,
             role: "User",
             device_id: userDetails.deviceId,
             login_type: "Default",
             status: true,
         });
-        user.save(function(err, result){
-            if(err) {
-                logger.error("registerUser: Error due to: "+err);
-                res.status(500).send({status: false, message: consts.FAIL, devMessage: "User Registered Failed", err});
-            } else {
-                if(result != null) {
-                    res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "User Registration Sucess"});
-                }
+        user.password = user.generateHash(userDetails.password);
+        user.save().then(function(result){
+            if(result != null) {
+                logger.info("registerUser: end executing at: " + new Date().toString());
+                res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "User Registration Sucess"});
             }
+        }).catch(function(err) {
+            logger.error("registerUser: Error due to: "+err);
+            res.status(500).send({status: false, message: consts.FAIL, devMessage: "User Registered Failed", err});
         });
     },
 
     loginUser: function(req, res) {
+        logger.info("loginUser: start executing at: " + new Date().toString());
         let privateKey = utils.readKeyFile(__dirname + '/../' + keys.PRIVATE_KEY_PATH);
         let userDetails = req.body;
-        User.countDocuments({email: userDetails.email, password: userDetails.password, role: consts.ROLE_USER, status: true}).exec()
-        .then(function(count) {
-            if(count > 0) {
-                let token = utils.getJWTToken({ email: userDetails.email, password: userDetails.password }, privateKey);
-                User.findOneAndUpdate({ email: userDetails.email }, { $set: { token: token } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
-                    if(err) {
-                        logger.error("loginUser: Error due to: "+err);
-                        res.status(500).send({status: false, message: consts.FAIL, devMessage: "User Login Failed", err});
-                    } else {
-                        res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "User Login Sucess", token: token, result});
-                    }                    
-                });
+        User.findOne({email: userDetails.email, role: consts.ROLE_USER, status: true})
+        .then(function(matchResult) {
+            if(matchResult != null) {
+                if (!matchResult.validPassword(userDetails.password)) {
+                    logger.error("loginUser: Error due to: Match invalid");
+                    return {status: false}; 
+                } else
+                    return {status: true, matchResult};           
             } else {
-                res.status(500).send({status: false, message: consts.FAIL, devMessage: "User Invalid Email And Password"});
+                res.status(401).send({status: false, message: consts.FAIL, devMessage: "Invalid User Email And Password"});
             }            
         })
-        .then(undefined, function(err){
+        .then(function(response) {
+            if(response.status) {
+                let token = utils.getJWTToken({ email: userDetails.email, password: userDetails.password }, privateKey);
+                User.findByIdAndUpdate(response.matchResult._id, { $set: { token: token } }, { new: true, projection: {__v:0, password: 0, token: 0} }, function(err, result) {
+                    if(err) {
+                        logger.error("loginUser: Error due to: "+err);
+                        res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Login Failed", err});
+                    } else {
+                        logger.info("loginUser: end executing at: " + new Date().toString());
+                        res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Login Sucess", token: token, result});
+                    }
+                });
+            } else {
+                res.status(401).send({status: false, message: consts.FAIL, devMessage: "Password didn't match"});
+            }
+        })
+        .catch(function(err) {
             logger.error("loginUser: Error due to: "+err);
-            res.status(403).send({status: false, message: consts.FAIL, devMessage: "User Login error", err});
+            res.status(403).send({status: false, message: consts.FAIL, devMessage: "Admin Login error", err});
         });
     },
 
@@ -199,63 +213,140 @@ module.exports = {
     otpVerification: function(req, res) {
         let userDetails = req.body;
         let deviceId = req.get(consts.DEVICE_ID);
-        User.findOneAndUpdate({ otp: userDetails.otp, device_id: deviceId }, { $set: { otp: null, status: true, password: userDetails.password } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
-            if(err) {
-                logger.error("otpVerification: Error due to: "+err);
-                res.status(500).send({status: false, message: consts.FAIL, devMessage: "OTP Verification Failed", err});
-            } else {
-                if(result != null) {
-                    res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "OTP Validated Successfully"});
-                } else {
+        bcrypt.hash(userDetails.password, keys.SALT_ROUNDS).then(function(hash){
+            User.findOneAndUpdate({ otp: userDetails.otp, device_id: deviceId }, { $set: { otp: null, status: true, password: hash } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
+                if(err) {
                     logger.error("otpVerification: Error due to: "+err);
-                    res.status(500).send({status: false, message: consts.FAIL, devMessage: "OTP not found"});
+                    res.status(500).send({status: false, message: consts.FAIL, devMessage: "OTP Verification Failed", err});
+                } else {
+                    if(result != null) {
+                        res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "OTP Validated Successfully"});
+                    } else {
+                        logger.error("otpVerification: OTP not found");
+                        res.status(500).send({status: false, message: consts.FAIL, devMessage: "OTP not found"});
+                    }
                 }
-            }
-        });
+            });
+        }).catch(function(err) {
+            logger.error("otpVerification: Error due to: "+err);
+            res.status(500).send({status: false, message: consts.FAIL, devMessage: "Error while hashing", err});
+        });        
     },
 
+    // USING CALLBACK
+    // registerAdmin: function(req, res) {
+    //     logger.info("registerAdmin: start executing at: " + new Date().toString());
+    //     let adminDetails = req.body;
+    //     bcrypt.hash(adminDetails.password, 15, function(err, hash) {
+    //         if(err) {
+    //             logger.error("registerAdmin: Error due to: "+err);
+    //             res.status(500).send({status: false, message: consts.FAIL, devMessage: "Error while hashing", err});
+    //         } else {
+    //             var user = new User({
+    //                 name: adminDetails.name,
+    //                 email: adminDetails.email,
+    //                 password: hash,
+    //                 role: "Admin",
+    //                 login_type: "Web",
+    //                 status: true,
+    //             });
+    //             user.save(function(err, result){
+    //                 if(err) {
+    //                     logger.error("registerAdmin: Error due to: "+err);
+    //                     res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Registered Failed", err});
+    //                 } else {
+    //                     if(result != null) {
+    //                         logger.info("registerAdmin: end executing at: " + new Date().toString());
+    //                         res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Registration Sucess"});
+    //                     }                
+    //                 }
+    //             });
+    //         }
+    //     });
+    // },
+
+    // USING PROMISE
     registerAdmin: function(req, res) {
+        logger.info("registerAdmin: start executing at: " + new Date().toString());
         let adminDetails = req.body;
         var user = new User({
             name: adminDetails.name,
             email: adminDetails.email,
-            password: adminDetails.password,
             role: "Admin",
             login_type: "Web",
             status: true,
         });
-        user.save(function(err, result){
-            if(err) {
-                logger.error("registerAdmin: Error due to: "+err);
-                res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Registered Failed", err});
-            } else {
-                if(result != null) {
-                    res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Registration Sucess"});
-                }                
+        user.password = user.generateHash(adminDetails.password);
+        user.save().then(function(result){
+            if(result != null) {
+                logger.info("registerAdmin: end executing at: " + new Date().toString());
+                res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Registration Sucess"});
             }
+        }).catch(function(err) {
+            logger.error("registerAdmin: Error due to: "+err);
+            res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Registered Failed", err});
         });
     },
 
+    // loginAdmin: function(req, res) {
+    //     let privateKey = utils.readKeyFile(__dirname + '/../' + keys.PRIVATE_KEY_PATH);
+    //     let adminDetails = req.body;
+    //     User.countDocuments({email: adminDetails.email, password: adminDetails.password, role: consts.ROLE_ADMIN, status: true}).exec()
+    //     .then(function(count) {
+    //         if(count > 0) {
+    //             let token = utils.getJWTToken({ email: adminDetails.email, password: adminDetails.password }, privateKey);
+    //             User.findOneAndUpdate({ email: adminDetails.email }, { $set: { token: token } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
+    //                 if(err) {
+    //                     logger.error("loginAdmin: Error due to: "+err);
+    //                     res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Login Failed", err});
+    //                 } else {
+    //                     res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Login Sucess", token: token, result});
+    //                 }
+    //             });
+    //         } else {
+    //             res.status(500).send({status: false, message: consts.FAIL, devMessage: "Invalid Admin Email And Password"});
+    //         }            
+    //     })
+    //     .then(undefined, function(err){
+    //         logger.error("loginAdmin: Error due to: "+err);
+    //         res.status(403).send({status: false, message: consts.FAIL, devMessage: "Admin Login error", err});
+    //     });
+    // },
+
+
     loginAdmin: function(req, res) {
+        logger.info("loginAdmin: start executing at: " + new Date().toString());
         let privateKey = utils.readKeyFile(__dirname + '/../' + keys.PRIVATE_KEY_PATH);
         let adminDetails = req.body;
-        User.countDocuments({email: adminDetails.email, password: adminDetails.password, role: consts.ROLE_ADMIN, status: true}).exec()
-        .then(function(count) {
-            if(count > 0) {
+        User.findOne({email: adminDetails.email, role: consts.ROLE_ADMIN, status: true})
+        .then(function(matchResult) {
+            if(matchResult != null) {
+                if (!matchResult.validPassword(adminDetails.password)) {
+                    logger.error("loginAdmin: Error due to: Match invalid");
+                    return {status: false}; 
+                } else
+                    return {status: true, matchResult};           
+            } else {
+                res.status(401).send({status: false, message: consts.FAIL, devMessage: "Invalid Admin Email And Password"});
+            }            
+        })
+        .then(function(response) {
+            if(response.status) {
                 let token = utils.getJWTToken({ email: adminDetails.email, password: adminDetails.password }, privateKey);
-                User.findOneAndUpdate({ email: adminDetails.email }, { $set: { token: token } }, { projection: {__v:0, password: 0, token: 0} }, function(err, result) {
+                User.findByIdAndUpdate(response.matchResult._id, { $set: { token: token } }, { new: true, projection: {__v:0, password: 0, token: 0} }, function(err, result) {
                     if(err) {
                         logger.error("loginAdmin: Error due to: "+err);
                         res.status(500).send({status: false, message: consts.FAIL, devMessage: "Admin Login Failed", err});
                     } else {
+                        logger.info("loginAdmin: end executing at: " + new Date().toString());
                         res.status(200).send({status: true, message: consts.SUCCESS, devMessage: "Admin Login Sucess", token: token, result});
                     }
                 });
             } else {
-                res.status(500).send({status: false, message: consts.FAIL, devMessage: "Invalid Admin Email And Password"});
-            }            
+                res.status(401).send({status: false, message: consts.FAIL, devMessage: "Password didn't match"});
+            }
         })
-        .then(undefined, function(err){
+        .catch(function(err) {
             logger.error("loginAdmin: Error due to: "+err);
             res.status(403).send({status: false, message: consts.FAIL, devMessage: "Admin Login error", err});
         });
