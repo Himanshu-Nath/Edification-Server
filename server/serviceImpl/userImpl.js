@@ -27,21 +27,11 @@ module.exports = {
         });        
     },
 
-    validateUserToken : function ( token, callback ) {
-        // User.countDocuments({token: token, role: consts.ROLE_USER}, function(err, result) {
-        //     if(err) {
-        //         callback(false);
-        //     } else {
-        //         if(result > 0)
-        //             callback(true);
-        //         else
-        //             callback(false);
-        //     }
-        // })
+    validateUserToken : function ( token, callback ) {       
         let publicKey = utils.readKeyFile(__dirname + '/../' + keys.PUBLIC_KEY_PATH);
         utils.verifyJWTToken(token, publicKey, function(result) {
             if(result.status) {
-                User.countDocuments({token: token, role: consts.ROLE_ADMIN}, function(err, result) {
+                User.countDocuments({token: token, role: consts.ROLE_USER}, function(err, result) {
                     if(err) {
                         callback({status: false, error: "DB error"});
                     } else {

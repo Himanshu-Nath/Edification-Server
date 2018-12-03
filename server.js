@@ -44,10 +44,10 @@ app.use(function (req, res, next) {
             next();
         } else {
             userImpl.validateUserToken(req.get(consts.AUTH_TOKEN), function (response) {
-                if (response) {
+                if (response.status) {
                     next();
                 } else {
-                    res.status(401).send({ status: false, message: consts.FAIL, devMsg: "Unauthorized" });
+                    res.status(401).send({ status: false, message: consts.FAIL, devMsg: response.error });
                 }
             })
         }

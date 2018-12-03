@@ -91,21 +91,34 @@ module.exports = {
     },
 
     instituteList: function(req, res) {
-        logger.info(req.query);
+        logger.info("instituteList: start executing at: " + new Date().toString());
+        let instituteDetails = req.query;
         let searchQuery = {};
-        if(req.query.type) {
-            searchQuery.battle_type = req.query.type;
+        if(instituteDetails.instituteType) {
+            searchQuery.institute_type = new RegExp(instituteDetails.instituteType, 'i');
         }
-        if(req.query.location) {
-            searchQuery.location = req.query.location;
+        if(instituteDetails.city) {
+            searchQuery.contact.city = instituteDetails.city;
         }
-        if(req.query.king) {
-            let king = new RegExp(req.query.king, 'i');
-            searchQuery.$or = [ 
-                {attacker_king: king }, 
-                {defender_king: king } 
-            ];
+        if(instituteDetails.state) {
+            searchQuery.contact.state = instituteDetails.state;
         }
+        if(instituteDetails.zipcode) {
+            searchQuery.contact.zipcode = instituteDetails.zipcode;
+        }
+        Institute.find(searchQuery)
+        .then(function(result) {
+            if(result != null) {
+                logger.info("instituteList: end executing at: " + new Date().toString());
+                res.send({ status: true, message: consts.SUCCESS, result });         
+            } else {
+                logger.error('instituteList: no record found according to above condition');
+                res.send({ status: false, message: consts.FAIL, devMessage: "No record found according to above condition" });
+            }
+        }).catch(function(err) {
+            logger.error("instituteList: Error due to: "+err);
+            res.status(403).send({status: false, message: consts.FAIL, devMessage: "Institute list fetching error", err});
+        });
     }
 
 }
